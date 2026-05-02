@@ -1,0 +1,7 @@
+.vscode
+dist/
+.env
+*.auth
+*.key
+launch.json
+.vagrant/
