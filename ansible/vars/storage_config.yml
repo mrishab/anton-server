@@ -1,0 +1,80 @@
+---
+# Storage Configuration
+
+# RAID Configuration
+# RAID 5 array - 3 disks (~32TB usable)
+raid_arrays:
+  - device: /dev/md0
+    level: 5
+    chunk_size: 512k
+    algorithm: 2
+    devices:
+      - /dev/sda1
+      - /dev/sdb1
+      - /dev/sdd1
+    mount_point: /mnt/external_hdd
+    filesystem: ext4
+
+# Main storage mount point
+main_storage_path: /mnt/external_hdd
+
+# Additional HDDs - from fstab.txt
+additional_mounts:
+  - name: wd_portable_hdd_3tb
+    uuid: "8b5fd151-41c4-441b-8f51-250e7c94a89e"
+    mount_point: /mnt/wd_portable_hdd_3tb
+    filesystem: ext4
+    options: defaults,nofail
+  - name: sony_portable_hdd_1tb
+    uuid: "68b809bb-5242-4d2c-9537-e17f6b3b54aa"
+    mount_point: /mnt/sony_portable_hdd_1tb
+    filesystem: ext4
+    options: defaults,nofail
+
+# fstab entries
+fstab_entries:
+  # Root filesystem
+  - source: "UUID=f9338bb6-76ea-4125-8931-1bb4cbc714b1"
+    target: /
+    fstype: ext4
+    options: defaults
+    dump: 0
+    passno: 0
+  # Swap
+  - source: /swapfile
+    target: none
+    fstype: swap
+    options: sw
+    dump: 0
+    passno: 0
+  # RAID 5 array
+  - source: /dev/md0
+    target: /mnt/external_hdd
+    fstype: ext4
+    options: defaults
+    dump: 0
+    passno: 0
+  # WD 3TB
+  - source: "UUID=8b5fd151-41c4-441b-8f51-250e7c94a89e"
+    target: /mnt/wd_portable_hdd_3tb
+    fstype: ext4
+    options: defaults,nofail
+    dump: 0
+    passno: 0
+  # Sony 1TB
+  - source: "UUID=68b809bb-5242-4d2c-9537-e17f6b3b54aa"
+    target: /mnt/sony_portable_hdd_1tb
+    fstype: ext4
+    options: defaults,nofail
+    dump: 0
+    passno: 0
+
+# RAID monitoring
+mdadm_monitor_email: "root"
+mdadm_homehost: "<system>"
+
+# Backup directories
+backup_directories:
+  - /mnt/wd_1000/backups/
+  - /mnt/hitachi_500/restore
+  - /mnt/external_hdd/restore

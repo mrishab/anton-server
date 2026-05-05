@@ -1,0 +1,168 @@
+# Core tasks for Anton Server
+- name: Update apt cache and install base packages
+  apt:
+    name: "{{ system_packages }}"
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install Docker dependencies
+  apt:
+    name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release]
+    state: present
+
+- name: Add Docker GPG key and repository
+  block:
+    - name: Create keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Docker GPG key
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch={{ docker_repo_arch | default('amd64') }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+- name: Install Docker and Compose
+  apt:
+    name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin]
+    state: present
+    update_cache: yes
+
+- name: Install Docker Compose standalone
+  get_url:
+    url: "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-{{ docker_compose_arch | default('x86_64') }}"
+    dest: /usr/local/bin/docker-compose
+    mode: '0755'
+
+- name: Ensure Docker is started
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Manage regular users
+  user:
+    name: "{{ item.name }}"
+    uid: "{{ item.uid }}"
+    groups: "{{ item.groups | default([]) + ['docker'] }}"
+    append: yes
+    shell: /bin/bash
+    create_home: yes
+  loop: "{{ regular_users }}"
+
+- name: Set up authorized keys for mrishab
+  authorized_key:
+    user: mrishab
+    state: present
+    key: "{{ mrishab_public_key }}"
+
+- name: Install mdadm for RAID
+  apt:
+    name: mdadm
+    state: present
+
+- name: Configure storage mounts
+  mount:
+    path: "{{ item.target }}"
+    src: "{{ item.source }}"
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.options | default('defaults') }}"
+    dump: "{{ item.dump | default(0) }}"
+    passno: "{{ item.passno | default(0) }}"
+    state: present
+  loop: "{{ fstab_entries }}"
+  when: item.target != '/' and item.fstype != 'swap'
+
+- name: Apply sysctl settings
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop: "{{ sysctl_settings | dict2items }}"
+
+- name: Configure SSH
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin {{ ssh_permit_root_login }}" }
+    - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication {{ ssh_password_authentication }}" }
+    - { regexp: "^#?PubkeyAuthentication", line: "PubkeyAuthentication {{ ssh_pubkey_authentication }}" }
+    - { regexp: "^#?ChallengeResponseAuthentication", line: "ChallengeResponseAuthentication {{ ssh_challenge_response_authentication }}" }
+    - { regexp: "^#?KbdInteractiveAuthentication", line: "KbdInteractiveAuthentication {{ ssh_kbd_interactive_authentication }}" }
+  notify: restart ssh
+
+- name: Configure UFW rules
+  ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+  loop: "{{ ufw_rules }}"
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+
+- name: Configure Fail2Ban
+  template:
+    src: templates/fail2ban-jail.local.j2
+    dest: /etc/fail2ban/jail.local
+  notify: restart fail2ban
+
+- name: Manage Fail2Ban service
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes
+
+- name: Setup Node Exporter
+  block:
+    - name: Download and install node_exporter
+      unarchive:
+        src: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}.tar.gz"
+        dest: /tmp
+        remote_src: yes
+      check_mode: no
+
+    - name: Copy binary
+      copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}/node_exporter"
+        dest: /usr/local/bin/node_exporter
+        mode: '0755'
+        remote_src: yes
+
+    - name: Create systemd service
+      copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          After=network.target
+
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Start Node Exporter
+      service:
+        name: node_exporter
+        state: started
+        enabled: yes

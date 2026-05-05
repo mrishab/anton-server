@@ -1,0 +1,20 @@
+---
+- name: Setup Anton Server
+  hosts: all
+  become: yes
+  vars_files:
+    - vars/packages.yml
+    - vars/system_config.yml
+    - vars/security_config.yml
+    - vars/storage_config.yml
+    - vars/monitoring_config.yml
+
+  tasks:
+    - name: Include core tasks
+      import_tasks: tasks.yml
+
+  handlers:
+    - name: restart ssh
+      service: { name: sshd, state: restarted }
+    - name: restart fail2ban
+      service: { name: fail2ban, state: restarted }

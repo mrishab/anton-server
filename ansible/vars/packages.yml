@@ -1,0 +1,25 @@
+---
+# System packages to install
+system_packages:
+  - git
+  - curl
+  - wget
+  - vim
+  - htop
+  - net-tools
+  - rsync
+  - acl
+  - python3
+  - python3-pip
+  - build-essential
+  - ufw
+  - fail2ban
+  - smartmontools
+  - hdparm
+  - bcache-tools
+  - dislocker
+  - open-vm-tools
+  - r8168-dkms
+  - nvidia-driver-580
+  - nvidia-utils-580
+  - nvidia-kernel-common-580

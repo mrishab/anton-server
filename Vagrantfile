@@ -4,6 +4,9 @@ Vagrant.configure("2") do |config|
   # Ubuntu 22.04 LTS (Jammy)
   config.vm.box = "perk/ubuntu-2204-arm64"
   
+  # Increase boot timeout
+  config.vm.boot_timeout = 600
+  
   config.vm.hostname = "anton-dev"
   
   config.vm.provider "qemu" do |qe|
@@ -37,6 +40,9 @@ Vagrant.configure("2") do |config|
     apt-get update
     apt-get install -y python3 python3-pip
     
+    # Set password for vagrant user
+    echo "vagrant:vagrant" | chpasswd
+
     # Create storage directory to simulate production
     mkdir -p /mnt/external_hdd
     chmod 755 /mnt/external_hdd
@@ -47,7 +53,7 @@ Vagrant.configure("2") do |config|
     ansible.compatibility_mode = "2.0"
     ansible.playbook = "ansible/playbook.yml"
     ansible.inventory_path = "ansible/inventory"
-    ansible.limit = "all"
+    ansible.limit = "anton-dev"
     ansible.verbose = "v"
     ansible.extra_vars = {
       ansible_python_interpreter: "/usr/bin/python3",
