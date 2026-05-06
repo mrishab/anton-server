@@ -10,7 +10,7 @@ system_packages:
   - rsync
   - acl
   - python3
-  - python3-pip
+
   - build-essential
   - ufw
   - fail2ban
@@ -20,6 +20,6 @@ system_packages:
   - dislocker
   - open-vm-tools
   - r8168-dkms
-  - nvidia-driver-580
-  - nvidia-utils-580
-  - nvidia-kernel-common-580
+  - nvidia-driver-575
+  - nvidia-utils-575
+  - nvidia-kernel-common-575

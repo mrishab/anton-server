@@ -11,26 +11,7 @@
     name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release]
     state: present
 
-- name: Add Docker GPG key and repository
-  block:
-    - name: Create keyrings directory
-      file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: '0755'
 
-    - name: Add Docker GPG key
-      shell: |
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-        chmod a+r /etc/apt/keyrings/docker.gpg
-      args:
-        creates: /etc/apt/keyrings/docker.gpg
-
-    - name: Add Docker repository
-      apt_repository:
-        repo: "deb [arch={{ docker_repo_arch | default('amd64') }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-        state: present
-        filename: docker
 
 - name: Install Docker and Compose
   apt:
@@ -38,11 +19,7 @@
     state: present
     update_cache: yes
 
-- name: Install Docker Compose standalone
-  get_url:
-    url: "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-{{ docker_compose_arch | default('x86_64') }}"
-    dest: /usr/local/bin/docker-compose
-    mode: '0755'
+
 
 - name: Ensure Docker is started
   service:
@@ -101,7 +78,7 @@
     - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication {{ ssh_password_authentication }}" }
     - { regexp: "^#?PubkeyAuthentication", line: "PubkeyAuthentication {{ ssh_pubkey_authentication }}" }
     - { regexp: "^#?ChallengeResponseAuthentication", line: "ChallengeResponseAuthentication {{ ssh_challenge_response_authentication }}" }
-    - { regexp: "^#?KbdInteractiveAuthentication", line: "KbdInteractiveAuthentication {{ ssh_kbd_interactive_authentication }}" }
+    - { regexp: "^#?AllowGroups", line: "AllowGroups {{ ssh_allow_groups }}" }
   notify: restart ssh
 
 - name: Configure UFW rules

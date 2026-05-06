@@ -14,5 +14,5 @@ enabled = {{ jail.enabled | lower }}
 port = {{ jail.port }}
 logpath = {{ jail.logpath }}
 maxretry = {{ jail.maxretry }}
-bantime = {{ jail.bantime }}
+bantime = {{ jail.bantime | default(fail2ban_bantime) }}
 {% endfor %}
