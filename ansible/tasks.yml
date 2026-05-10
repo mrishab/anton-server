@@ -6,6 +6,14 @@
     update_cache: yes
     cache_valid_time: 3600
 
+- name: Create symlink for batcat to bat
+  file:
+    src: /usr/bin/batcat
+    dest: /usr/bin/bat
+    state: link
+    force: yes
+  ignore_errors: yes
+
 - name: Install Docker dependencies
   apt:
     name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release]
