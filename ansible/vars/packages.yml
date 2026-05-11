@@ -87,10 +87,10 @@ system_packages:
 
   # NVIDIA & Container Toolkit
   - nvidia-driver-580
-  - nvidia-container-toolkit
-  - nvidia-container-toolkit-base
-  - libnvidia-container-tools
-  - libnvidia-container1
+  # - nvidia-container-toolkit
+  # - nvidia-container-toolkit-base
+  # - libnvidia-container-tools
+  # - libnvidia-container1
 
   # Cloud & Infrastructure
   - cloud-init
@@ -108,7 +108,7 @@ system_packages:
   - docker-buildx-plugin
   - docker-compose
   - docker-compose-plugin
-  - kubelet
+  # - kubelet
 
   # Extra
   - yt-dlp
