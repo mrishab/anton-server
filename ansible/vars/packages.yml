@@ -1,26 +1,122 @@
 ---
 # System packages to install
+
 system_packages:
-  - git
+  # Core System
+  - ubuntu-minimal
+  - ubuntu-standard
+  - init
+  - login
+  - bash
+  - dash
+  - libc6
+  - gzip
+  - findutils
+  - grep
+  - diffutils
+  - patch
+  - hostname
+  - logrotate
+  - sysvinit-utils
+  - ncurses-base
+  - ncurses-bin
+
+  # Utilities & Shell
+  - acl
+  - at
+  - bat
   - curl
   - wget
-  - vim
   - htop
   - net-tools
   - rsync
-  - acl
-  - python3
-  - bat
-
+  - screen
+  - tmux
+  - vim
+  - git
+  - make
+  - gcc
   - build-essential
+  - python3
+  - traceroute
+  - pollinate
+  - rdfind
+  - sosreport
+  - landscape-common
+  - update-notifier-common
+  - motd-news-config
+  - dctrl-tools
+  - software-properties-common
+  - fonts-ubuntu-console
+
+  # Networking & SSH
+  - openssh-client
+  - openssh-server
+  - ssh
+  - ethtool
+  - ebtables
+  - wpasupplicant
+
+  # Security
   - ufw
   - fail2ban
+  - rkhunter
+  - policycoreutils
+  - unattended-upgrades
+
+  # Storage & Filesystems
+  - mdadm
+  - lvm2
   - smartmontools
   - hdparm
   - bcache-tools
   - dislocker
+  - udisks2
+  - ntfs-3g
+  - exfat-fuse
+  - exfatprogs
+  - xfsprogs
+  - open-iscsi
+
+  # Hardware & Drivers
+  - dkms
   - open-vm-tools
   - r8168-dkms
-  - nvidia-driver-575
-  - nvidia-utils-575
-  - nvidia-kernel-common-575
+  - ubuntu-drivers-common
+  - acpid
+
+  # NVIDIA & Container Toolkit
+  - nvidia-driver-580
+  - nvidia-container-toolkit
+  - nvidia-container-toolkit-base
+  - libnvidia-container-tools
+  - libnvidia-container1
+
+  # Cloud & Infrastructure
+  - cloud-init
+  - cloud-guest-utils
+  - cloud-initramfs-copymods
+  - cloud-initramfs-dyn-netconf
+  - overlayroot
+  - grub-legacy-ec2
+  - apport
+
+  # Docker & Containers
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose
+  - docker-compose-plugin
+  - kubelet
+
+  # Extra
+  - yt-dlp
+
+  # Docker Prerequisites
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - python3-apt
+  - dirmngr

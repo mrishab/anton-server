@@ -1,0 +1,19 @@
+# System users
+users:
+  - name: mrishab
+    public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLeDqNF2xQvcRtdafSo5pRWZei2+EQCDzmNao/h7lu0durKlWvLMc9ZdJTt9MFEBzAsejKy2hySAthpReE9BDPsyMT7niobbXNih/cBqUyq0wwZyRVhzLzraFnH9/FiymJSP64EuYzHIa8EanRk2piWpNzxUsGCL+uzePURCqA4kfJ4KirqCJJP+76o1Yd6tK6nAL/ikc5xHJzjmOfFtl/0xYyo5pqYvKE634FKH+Qm4sMe/8Pmg/MOFit4J0EnaE4I1lLzvnGDUTOQOAgVXToCfmOqkRxyBRhjiK8t6/OosGemDlvJLpJ2HDTivACwiaJnQz1wUQ30UAAfnewrgcZFxjJostZmzyOYBfY5HGAWdF4+sSEGuBYTk9ctw8vjk7jggFnpB9p1lPb+KK9Mfz9dbi+l1/OXAlCvztOIQyU46SX292/+B2zdIJGFoNuXmEjTqu3d4vW7Uf36CtNs3bWmJrz54dQLVgd8CEce9Ye/IAENpS4Rl2btVoLu3Lf6+0iQkOzoO/p1uNWeRNqHGM6AbiQRTMCrN0oME5iNKO1yz+rQAGEKmecVC3KMVd1kP9IhOi/jV2/07jpJtFawHKnATxeC3s9n5owxR5UeoR6nfJaF+gXEhVSZMXnoeXzHC+hymXd3sDkGNIGz3YP4M1kLJb86FEBZEVIKZ79kx100w== rishab.manocha@outlook.com"
+    groups:
+      - sudo
+      - docker
+      - admin
+      - brewcraft
+  - name: jaas
+    groups:
+      - docker
+      - admin
+  - name: sarthak
+    groups:
+      - docker
+      - admin
+
+primary_user: mrishab

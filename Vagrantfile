@@ -42,10 +42,6 @@ Vagrant.configure("2") do |config|
     
     # Set password for vagrant user
     echo "vagrant:vagrant" | chpasswd
-
-    # Create storage directory to simulate production
-    mkdir -p /mnt/external_hdd
-    chmod 755 /mnt/external_hdd
   SHELL
   
   # Ansible provisioning
@@ -59,7 +55,6 @@ Vagrant.configure("2") do |config|
       ansible_python_interpreter: "/usr/bin/python3",
       # Override for dev environment
       host_user: "vagrant",
-      host_dir: "/mnt/external_hdd",
       # Architecture-specific overrides for QEMU (arm64 box)
       docker_repo_arch: "arm64",
       docker_compose_arch: "aarch64",

@@ -6,8 +6,11 @@ ANSIBLE := ansible-playbook
 # Add -K to prompt for sudo password
 ANSIBLE_FLAGS := --ask-become-pass
 
+# Default target and architecture
+TARGET ?= anton
+
 # Default apps and limits
-ANSIBLE_VARS := $(if $(APPS),-e "apps=$(APPS)",)
+ANSIBLE_VARS := -e "@ansible/vars/targets/$(TARGET).yml" $(if $(APPS),-e "apps=$(APPS)",)
 ANSIBLE_LIMIT := $(if $(LIMIT),--limit $(LIMIT),)
 
 ping:

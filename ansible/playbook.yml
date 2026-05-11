@@ -1,13 +1,14 @@
 ---
 - name: Setup Anton Server
   hosts: all
-  become: yes
+  become: true
   vars_files:
     - vars/packages.yml
     - vars/system_config.yml
     - vars/security_config.yml
     - vars/storage_config.yml
     - vars/monitoring_config.yml
+    - vars/users_config.yml
 
   tasks:
     - name: Include core tasks

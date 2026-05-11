@@ -9,4 +9,3 @@ node_exporter_group: node_exporter
 
 # Deployment method
 node_exporter_deployment: "systemd"
-node_exporter_arch: "arm64"

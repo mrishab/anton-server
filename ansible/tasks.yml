@@ -1,5 +1,15 @@
 # Core tasks for Anton Server
-- name: Update apt cache and install base packages
+- name: Add Docker's official GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker repository
+  apt_repository:
+    repo: "deb [arch={{ docker_repo_arch | default('amd64') }}] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Install packages
   apt:
     name: "{{ system_packages }}"
     state: present
@@ -14,59 +24,80 @@
     force: yes
   ignore_errors: yes
 
-- name: Install Docker dependencies
-  apt:
-    name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release]
-    state: present
-
-
-
-- name: Install Docker and Compose
-  apt:
-    name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin]
-    state: present
-    update_cache: yes
-
-
-
 - name: Ensure Docker is started
   service:
     name: docker
     state: started
     enabled: yes
 
-- name: Manage regular users
+- name: Manage users
   user:
     name: "{{ item.name }}"
-    uid: "{{ item.uid }}"
-    groups: "{{ item.groups | default([]) + ['docker'] }}"
+    groups: "{{ item.groups | default([]) }}"
     append: yes
     shell: /bin/bash
     create_home: yes
-  loop: "{{ regular_users }}"
+    non_unique: yes
+  loop: "{{ users }}"
 
-- name: Set up authorized keys for mrishab
+- name: Set up authorized keys for users
   authorized_key:
-    user: mrishab
+    user: "{{ item.name }}"
     state: present
-    key: "{{ mrishab_public_key }}"
+    key: "{{ item.public_key }}"
+  when: item.public_key is defined
+  loop: "{{ users }}"
 
-- name: Install mdadm for RAID
-  apt:
-    name: mdadm
-    state: present
+- name: Ensure storage mount points exist
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(primary_user) }}"
+    group: "{{ item.group | default(primary_user) }}"
+    mode: "0755"
+  loop: "{{ filesystems }}"
+  when: item.path not in ["/", "none"]
 
-- name: Configure storage mounts
+- name: Create backup directories
+  file:
+    path: "{{ item.0.path }}{{ item.1 }}"
+    state: directory
+    owner: "{{ item.0.backup_owner | default(item.0.owner) | default(primary_user) }}"
+    group: "{{ item.0.backup_group | default(item.0.group) | default(primary_user) }}"
+    mode: "0755"
+  with_subelements:
+    - "{{ filesystems }}"
+    - backups
+    - skip_missing: true
+
+- name: Configure mdadm monitoring and homehost
+  lineinfile:
+    path: /etc/mdadm/mdadm.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    create: yes
+  loop:
+    - {
+        regexp: "^MAILADDR",
+        line: "MAILADDR {{ storage_settings.monitoring.email }}",
+      }
+    - {
+        regexp: "^HOMEHOST",
+        line: "HOMEHOST {{ storage_settings.monitoring.homehost }}",
+      }
+
+- name: Configure storage mounts in fstab
   mount:
-    path: "{{ item.target }}"
+    path: "{{ item.path }}"
     src: "{{ item.source }}"
     fstype: "{{ item.fstype }}"
     opts: "{{ item.options | default('defaults') }}"
-    dump: "{{ item.dump | default(0) }}"
-    passno: "{{ item.passno | default(0) }}"
     state: present
-  loop: "{{ fstab_entries }}"
-  when: item.target != '/' and item.fstype != 'swap'
+  loop: "{{ filesystems }}"
+  when:
+    - item.source is defined
+    - item.path != "/"
+    - item.fstype != "swap"
 
 - name: Apply sysctl settings
   sysctl:
@@ -82,10 +113,22 @@
     regexp: "{{ item.regexp }}"
     line: "{{ item.line }}"
   loop:
-    - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin {{ ssh_permit_root_login }}" }
-    - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication {{ ssh_password_authentication }}" }
-    - { regexp: "^#?PubkeyAuthentication", line: "PubkeyAuthentication {{ ssh_pubkey_authentication }}" }
-    - { regexp: "^#?ChallengeResponseAuthentication", line: "ChallengeResponseAuthentication {{ ssh_challenge_response_authentication }}" }
+    - {
+        regexp: "^#?PermitRootLogin",
+        line: "PermitRootLogin {{ ssh_permit_root_login }}",
+      }
+    - {
+        regexp: "^#?PasswordAuthentication",
+        line: "PasswordAuthentication {{ ssh_password_authentication }}",
+      }
+    - {
+        regexp: "^#?PubkeyAuthentication",
+        line: "PubkeyAuthentication {{ ssh_pubkey_authentication }}",
+      }
+    - {
+        regexp: "^#?ChallengeResponseAuthentication",
+        line: "ChallengeResponseAuthentication {{ ssh_challenge_response_authentication }}",
+      }
     - { regexp: "^#?AllowGroups", line: "AllowGroups {{ ssh_allow_groups }}" }
   notify: restart ssh
 
@@ -125,7 +168,7 @@
       copy:
         src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}/node_exporter"
         dest: /usr/local/bin/node_exporter
-        mode: '0755'
+        mode: "0755"
         remote_src: yes
 
     - name: Create systemd service

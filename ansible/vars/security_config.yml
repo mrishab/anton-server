@@ -7,27 +7,6 @@ ssh_password_authentication: "no"
 ssh_allow_groups: "admin sudo brewcraft"
 ssh_challenge_response_authentication: "no"
 ssh_pubkey_authentication: "yes"
-ssh_allowed_users:
-  - anton
-  - mrishab
-  - jaas
-  - sarthak
-
-mrishab_public_key: "ssh-rsa
-  AAAAB3NzaC1yc2EAAAADAQABAAACAQDLeDqNF2xQvcRtdafSo5pRWZei2+EQCDzmNao/h7lu0durK\
-  lWvLMc9ZdJTt9MFEBzAsejKy2hySAthpReE9BDPsyMT7niobbXNih/cBqUyq0wwZyRVhzLzraFnH9\
-  /FiymJSP64EuYzHIa8EanRk2piWpNzxUsGCL+uzePURCqA4kfJ4KirqCJJP+76o1Yd6tK6nAL/ikc\
-  5xHJzjmOfFtl/0xYyo5pqYvKE634FKH+Qm4sMe/8Pmg/MOFit4J0EnaE4I1lLzvnGDUTOQOAgVXTo\
-  CfmOqkRxyBRhjiK8t6/OosGemDlvJLpJ2HDTivACwiaJnQz1wUQ30UAAfnewrgcZFxjJostZmzyOY\
-  BfY5HGAWdF4+sSEGuBYTk9ctw8vjk7jggFnpB9p1lPb+KK9Mfz9dbi+l1/OXAlCvztOIQyU46SX29\
-  2/+B2zdIJGFoNuXmEjTqu3d4vW7Uf36CtNs3bWmJrz54dQLVgd8CEce9Ye/IAENpS4Rl2btVoLu3L\
-  f6+0iQkOzoO/p1uNWeRNqHGM6AbiQRTMCrN0oME5iNKO1yz+rQAGEKmecVC3KMVd1kP9IhOi/jV2/\
-  07jpJtFawHKnATxeC3s9n5owxR5UeoR6nfJaF+gXEhVSZMXnoeXzHC+hymXd3sDkGNIGz3YP4M1kL\
-  Jb86FEBZEVIKZ79kx100w== rishab.manocha@outlook.com"
-
-# Sudo Users
-sudo_users:
-  - mrishab
 
 # UFW Firewall Rules - Restricted to SSH and Monitoring
 ufw_default_incoming: "deny"
@@ -38,17 +17,17 @@ ufw_rules:
   - { rule: "allow", port: "9100", proto: "tcp", comment: "Node Exporter" }
 
 # Fail2Ban Configuration
-fail2ban_bantime: "1h"
+fail2ban_bantime: "10m"
 fail2ban_findtime: "10m"
-fail2ban_maxretry: 5
+fail2ban_maxretry: 6
 
 # Fail2Ban Jails
 fail2ban_jails:
-  - name: "sshd"
+  - name: "ssh"
     enabled: true
     port: "ssh"
+    filter: "sshd"
     logpath: "/var/log/auth.log"
-    maxretry: 5
 
 # Additional Security Packages
 security_packages:

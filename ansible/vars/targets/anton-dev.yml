@@ -1,0 +1,4 @@
+---
+target_arch: "arm64"
+docker_repo_arch: "arm64"
+node_exporter_arch: "arm64"

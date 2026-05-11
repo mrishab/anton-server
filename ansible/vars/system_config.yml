@@ -1,25 +1,8 @@
 ---
 # System configuration
-# Host configuration
-host_dir: /mnt/external_hdd
-host_user: mrishab
-
-# ACL configuration
-
 # Sysctl settings
 sysctl_settings:
   vm.max_map_count: 262144
 
-# System users
-regular_users:
-  - name: mrishab
-    uid: 1000
-    groups:
-      - sudo
-      - docker
-  - name: jaas
-    uid: 1003
-    groups:
-      - docker
-
-
+# Backup Configuration
+backup_gid: 2234
