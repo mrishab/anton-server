@@ -30,6 +30,14 @@
     state: started
     enabled: yes
 
+- name: Ensure user groups exist
+  group:
+    name: "{{ item.1 }}"
+    state: present
+  with_subelements:
+    - "{{ users }}"
+    - groups
+
 - name: Manage users
   user:
     name: "{{ item.name }}"
