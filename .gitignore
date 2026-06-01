@@ -5,3 +5,4 @@ dist/
 *.key
 launch.json
 .vagrant/
+**/secrets/*

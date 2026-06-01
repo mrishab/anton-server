@@ -30,6 +30,11 @@
     state: started
     enabled: yes
 
+- name: Load host-specific secrets
+  include_vars:
+    file: "vars/secrets/{{ inventory_hostname }}.yml"
+  failed_when: false
+
 - name: Ensure user groups exist
   group:
     name: "{{ item.1 }}"
@@ -42,6 +47,7 @@
   user:
     name: "{{ item.name }}"
     groups: "{{ item.groups | default([]) }}"
+    password: "{{ (user_passwords | default({}))[item.name] | default(omit) }}"
     append: yes
     shell: /bin/bash
     create_home: yes
@@ -162,6 +168,35 @@
     name: fail2ban
     state: started
     enabled: yes
+
+- name: Enable Ubuntu Pro (Expanded Security Maintenance)
+  command: pro attach {{ ubuntu_pro_token }}
+  args:
+    creates: /var/lib/ubuntu-advantage/private/machine-token.json
+  when: ubuntu_pro_token is defined
+
+- name: Configure periodic apt updates and upgrades
+  copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Download-Upgradeable-Packages "1";
+      APT::Periodic::AutocleanInterval "7";
+      APT::Periodic::Unattended-Upgrade "1";
+
+- name: Configure unattended-upgrades settings (autoremove and origins)
+  copy:
+    dest: /etc/apt/apt.conf.d/51unattended-upgrades-custom
+    content: |
+      Unattended-Upgrade::Allowed-Origins {
+          "${distro_id}:${distro_codename}";
+          "${distro_id}:${distro_codename}-security";
+          "${distro_id}ESMApps:${distro_codename}-apps-security";
+          "${distro_id}ESM:${distro_codename}-infra-security";
+          "${distro_id}:${distro_codename}-updates";
+      };
+      Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+      Unattended-Upgrade::Remove-Unused-Dependencies "true";
 
 - name: Setup Node Exporter
   block:
