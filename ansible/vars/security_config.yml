@@ -19,7 +19,7 @@ ufw_rules:
 # Fail2Ban Configuration
 fail2ban_bantime: "10m"
 fail2ban_findtime: "10m"
-fail2ban_maxretry: 6
+fail2ban_maxretry: 5
 
 # Fail2Ban Jails
 fail2ban_jails:
