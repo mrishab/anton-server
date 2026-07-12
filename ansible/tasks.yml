@@ -173,7 +173,6 @@
   ufw:
     rule: "{{ item.rule }}"
     port: "{{ item.port }}"
-    proto: "{{ item.proto | default('tcp') }}"
   loop: "{{ ufw_rules }}"
 
 - name: Enable UFW
