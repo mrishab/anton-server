@@ -3,23 +3,9 @@
 
 system_packages:
   # Core System
-  - ubuntu-minimal
-  - ubuntu-standard
-  - init
-  - login
-  - bash
-  - dash
-  - libc6
-  - gzip
-  - findutils
-  - grep
-  - diffutils
-  - patch
-  - hostname
   - logrotate
   - sysvinit-utils
-  - ncurses-base
-  - ncurses-bin
+
 
   # Utilities & Shell
   - acl
@@ -54,7 +40,6 @@ system_packages:
   # Networking & SSH
   - openssh-client
   - openssh-server
-  - ssh
   - ethtool
   - ebtables
   - wpasupplicant

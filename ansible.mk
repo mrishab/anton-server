@@ -10,7 +10,7 @@ ANSIBLE_FLAGS := --ask-become-pass
 TARGET ?= anton
 
 # Default apps and limits
-ANSIBLE_VARS := -e "@ansible/vars/targets/$(TARGET).yml" $(if $(APPS),-e "apps=$(APPS)",)
+ANSIBLE_VARS := -e "@ansible/vars/targets/$(TARGET).yml"
 ANSIBLE_LIMIT := $(if $(LIMIT),--limit $(LIMIT),)
 
 ping:
