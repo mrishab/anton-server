@@ -24,6 +24,29 @@
     force: yes
   ignore_errors: yes
 
+- name: Configure Docker daemon to listen on TCP 172.17.0.1:2375
+  block:
+    - name: Create Docker systemd override directory
+      file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Configure Docker to expose TCP API
+      copy:
+        dest: /etc/systemd/system/docker.service.d/override.conf
+        mode: "0644"
+        content: |
+          [Service]
+          ExecStart=
+          ExecStart=/usr/bin/dockerd \
+            -H unix:///var/run/docker.sock \
+            -H tcp://0.0.0.0:2375 \
+            --containerd=/run/containerd/containerd.sock
+      notify:
+        - reload systemd
+        - restart docker
+
 - name: Ensure Docker is started
   service:
     name: docker
