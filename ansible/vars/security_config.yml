@@ -34,3 +34,7 @@ security_packages:
   - fail2ban
   - ufw
   - unattended-upgrades
+
+# Unattended upgrades email notifications
+security_admin_email: "rishab.manocha@outlook.com"
+

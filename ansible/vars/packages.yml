@@ -28,6 +28,8 @@ system_packages:
   - curl
   - wget
   - htop
+  - sysstat
+  - apt-listchanges
   - net-tools
   - rsync
   - screen

@@ -26,3 +26,8 @@
       service:
         name: docker
         state: restarted
+    - name: restart sysstat
+      service:
+        name: sysstat
+        state: restarted
+
