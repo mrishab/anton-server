@@ -6,7 +6,6 @@ users:
       - sudo
       - docker
       - admin
-      - brewcraft
   - name: jaas
     groups:
       - docker
