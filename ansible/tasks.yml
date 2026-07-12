@@ -245,6 +245,54 @@
     state: started
     enabled: yes
 
+- name: Configure daily rkhunter scan
+  lineinfile:
+    path: /etc/default/rkhunter
+    regexp: '^CRON_DAILY_RUN='
+    line: 'CRON_DAILY_RUN="true"'
+
+- name: Configure weekly rkhunter database updates
+  lineinfile:
+    path: /etc/default/rkhunter
+    regexp: '^CRON_DB_UPDATE='
+    line: 'CRON_DB_UPDATE="true"'
+
+- name: Configure rkhunter alert email
+  lineinfile:
+    path: /etc/rkhunter.conf
+    regexp: '^#?MAIL-ON-WARNING='
+    line: 'MAIL-ON-WARNING="{{ security_admin_email }}"'
+
+- name: Ensure auditd is started and enabled
+  service:
+    name: auditd
+    state: started
+    enabled: yes
+
+- name: Check if AIDE database exists
+  stat:
+    path: /var/lib/aide/aide.db.gz
+  register: aide_db
+
+- name: Initialize AIDE database if missing
+  command: aideinit -y -f
+  when: not aide_db.stat.exists
+
+- name: Deploy initialized AIDE database
+  copy:
+    src: /var/lib/aide/aide.db.new.gz
+    dest: /var/lib/aide/aide.db.gz
+    remote_src: yes
+  when: not aide_db.stat.exists
+
+- name: Configure weekly Lynis security audit cron job
+  cron:
+    name: "Weekly Lynis Security Audit"
+    special_time: weekly
+    job: "/usr/sbin/lynis audit system --quick --quiet"
+
+
+
 - name: Setup Node Exporter
   block:
     - name: Create node_exporter group

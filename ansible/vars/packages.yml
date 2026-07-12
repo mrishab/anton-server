@@ -50,6 +50,9 @@ system_packages:
   - rkhunter
   - policycoreutils
   - unattended-upgrades
+  - auditd
+  - aide
+  - lynis
 
   # Storage & Filesystems
   - mdadm
