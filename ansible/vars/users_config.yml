@@ -5,14 +5,13 @@ users:
     groups:
       - sudo
       - docker
-      - admin
   - name: jaas
     groups:
       - docker
-      - admin
+      - sudo
   - name: sarthak
     groups:
       - docker
-      - admin
+      - sudo
 
 primary_user: mrishab

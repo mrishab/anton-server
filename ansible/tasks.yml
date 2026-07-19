@@ -78,7 +78,7 @@
   group:
     name: "{{ item }}"
     state: present
-  loop: "{{ (users | map(attribute='name') | list + users | map(attribute='groups', default=[]) | flatten) | unique }}"
+  loop: "{{ users | map(attribute='groups', default=[]) | flatten | unique }}"
 
 - name: Manage users
   user:
