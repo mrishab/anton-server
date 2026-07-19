@@ -76,15 +76,14 @@
 
 - name: Ensure user groups exist
   group:
-    name: "{{ item.1 }}"
+    name: "{{ item }}"
     state: present
-  with_subelements:
-    - "{{ users }}"
-    - groups
+  loop: "{{ (users | map(attribute='name') | list + users | map(attribute='groups', default=[]) | flatten) | unique }}"
 
 - name: Manage users
   user:
     name: "{{ item.name }}"
+    group: "{{ item.name }}"
     groups: "{{ item.groups | default([]) }}"
     password: "{{ (user_passwords | default({}))[item.name] | default(omit) }}"
     append: yes
@@ -205,147 +204,6 @@
     state: absent
     purge: yes
 
-- name: Download Wazuh GPG key
-  get_url:
-    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
-    dest: /usr/share/keyrings/wazuh.asc
-    mode: "0644"
-
-- name: Add Wazuh repository
-  apt_repository:
-    repo: "deb [signed-by=/usr/share/keyrings/wazuh.asc] https://packages.wazuh.com/4.x/apt/ stable main"
-    state: present
-    filename: wazuh
-
-- name: Install Wazuh agent
-  apt:
-    name: wazuh-agent
-    state: present
-    update_cache: yes
-  environment:
-    WAZUH_MANAGER: "{{ wazuh_manager_host }}"
-
-- name: Ensure Wazuh agent is started and enabled
-  service:
-    name: wazuh-agent
-    state: started
-    enabled: yes
-
-- name: Deploy Wazuh Manager Native Stack
-  block:
-    - name: Install Wazuh Indexer, Manager, and Dashboard
-      apt:
-        name:
-          - wazuh-indexer
-          - wazuh-manager
-          - wazuh-dashboard
-        state: present
-        update_cache: yes
-
-    - name: Ensure Wazuh Indexer certs directory exists
-      file:
-        path: /etc/wazuh-indexer/certs
-        state: directory
-        owner: wazuh-indexer
-        group: wazuh-indexer
-        mode: "0750"
-
-    - name: Generate Wazuh Indexer TLS certificates if missing
-      shell: |
-        openssl req -x509 -new -nodes -newkey rsa:2048 -keyout /etc/wazuh-indexer/certs/root-ca.key -out /etc/wazuh-indexer/certs/root-ca.pem -days 3650 -subj "/C=US/L=California/O=Wazuh/OU=Wazuh/CN=root-ca"
-        openssl req -new -nodes -newkey rsa:2048 -keyout /etc/wazuh-indexer/certs/indexer-key.pem -out /etc/wazuh-indexer/certs/indexer.csr -subj "/C=US/L=California/O=Wazuh/OU=Wazuh/CN=node-1"
-        openssl x509 -req -in /etc/wazuh-indexer/certs/indexer.csr -CA /etc/wazuh-indexer/certs/root-ca.pem -CAkey /etc/wazuh-indexer/certs/root-ca.key -CAcreateserial -out /etc/wazuh-indexer/certs/indexer.pem -days 3650
-        openssl req -new -nodes -newkey rsa:2048 -keyout /etc/wazuh-indexer/certs/admin-key.pem -out /etc/wazuh-indexer/certs/admin.csr -subj "/C=US/L=California/O=Wazuh/OU=Wazuh/CN=admin"
-        openssl x509 -req -in /etc/wazuh-indexer/certs/admin.csr -CA /etc/wazuh-indexer/certs/root-ca.pem -CAkey /etc/wazuh-indexer/certs/root-ca.key -CAcreateserial -out /etc/wazuh-indexer/certs/admin.pem -days 3650
-        chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs
-        chmod 750 /etc/wazuh-indexer/certs
-        chmod 640 /etc/wazuh-indexer/certs/*
-      args:
-        creates: /etc/wazuh-indexer/certs/root-ca.pem
-
-    - name: Ensure Wazuh Dashboard certs directory exists
-      file:
-        path: /etc/wazuh-dashboard/certs
-        state: directory
-        owner: wazuh-dashboard
-        group: wazuh-dashboard
-        mode: "0750"
-
-    - name: Copy TLS certificates for Wazuh Dashboard
-      shell: |
-        cp /etc/wazuh-indexer/certs/indexer.pem /etc/wazuh-dashboard/certs/wazuh-dashboard.pem
-        cp /etc/wazuh-indexer/certs/indexer-key.pem /etc/wazuh-dashboard/certs/wazuh-dashboard-key.pem
-        cp /etc/wazuh-indexer/certs/root-ca.pem /etc/wazuh-dashboard/certs/root-ca.pem
-        chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
-        chmod 750 /etc/wazuh-dashboard/certs
-        chmod 640 /etc/wazuh-dashboard/certs/*
-      args:
-        creates: /etc/wazuh-dashboard/certs/wazuh-dashboard.pem
-
-    - name: Configure Wazuh Dashboard to bind to custom port, host, and SSL settings
-      lineinfile:
-        path: /etc/wazuh-dashboard/opensearch_dashboards.yml
-        regexp: "{{ item.regexp }}"
-        line: "{{ item.line }}"
-        create: yes
-      loop:
-        - {
-            regexp: "^server\\.port:",
-            line: "server.port: {{ wazuh_dashboard_port | default(8445) }}",
-          }
-        - {
-            regexp: "^server\\.host:",
-            line: 'server.host: "{{ wazuh_dashboard_bind | default(''0.0.0.0'') }}"',
-          }
-        - {
-            regexp: "^#?opensearch\\.ssl\\.verificationMode:",
-            line: "opensearch.ssl.verificationMode: none",
-          }
-        - {
-            regexp: "^#?server\\.ssl\\.enabled:",
-            line: "server.ssl.enabled: true",
-          }
-        - {
-            regexp: "^#?server\\.ssl\\.key:",
-            line: 'server.ssl.key: "/etc/wazuh-dashboard/certs/wazuh-dashboard-key.pem"',
-          }
-        - {
-            regexp: "^#?server\\.ssl\\.certificate:",
-            line: 'server.ssl.certificate: "/etc/wazuh-dashboard/certs/wazuh-dashboard.pem"',
-          }
-      notify: restart wazuh-dashboard
-
-    - name: Force systemd to reread configs
-      systemd:
-        daemon_reload: yes
-
-    - name: Enable and start wazuh-indexer before security init
-      service:
-        name: wazuh-indexer
-        state: started
-        enabled: yes
-
-    - name: Initialize Wazuh Indexer security plugin (run once)
-      command: /usr/share/wazuh-indexer/bin/indexer-security-init.sh
-      args:
-        creates: /etc/wazuh-indexer/.security_initialized
-      register: wazuh_security_init
-
-    - name: Mark security initialization as complete
-      file:
-        path: /etc/wazuh-indexer/.security_initialized
-        state: touch
-      when: wazuh_security_init.changed
-
-    - name: Ensure Wazuh Manager and Dashboard services are started and enabled
-      service:
-        name: "{{ item }}"
-        state: started
-        enabled: yes
-      loop:
-        - wazuh-manager
-        - wazuh-dashboard
-  when: wazuh_manager_deploy | default(false)
 
 - name: Ensure AppArmor is started and enabled
   service:

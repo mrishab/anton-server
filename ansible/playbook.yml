@@ -17,8 +17,6 @@
   handlers:
     - name: restart ssh
       service: { name: sshd, state: restarted }
-    - name: restart wazuh-agent
-      service: { name: wazuh-agent, state: restarted }
     - name: reload systemd
       systemd:
         daemon_reload: yes
@@ -29,8 +27,4 @@
     - name: restart sysstat
       service:
         name: sysstat
-        state: restarted
-    - name: restart wazuh-dashboard
-      service:
-        name: wazuh-dashboard
         state: restarted
