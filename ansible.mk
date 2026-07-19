@@ -6,7 +6,11 @@ INVENTORY := ansible/inventories/$(TARGET).ini
 PLAYBOOK := ansible/playbook.yml
 ANSIBLE := ansible-playbook -i $(INVENTORY) $(PLAYBOOK)
 
-ANSIBLE_FLAGS := --ask-become-pass
+ifeq ($(TARGET),anton-dev)
+ANSIBLE_FLAGS ?=
+else
+ANSIBLE_FLAGS ?= --ask-become-pass
+endif
 
 # Default apps and limits
 ANSIBLE_VARS := -e "@ansible/vars/targets/$(TARGET).yml"

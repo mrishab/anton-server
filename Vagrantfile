@@ -28,7 +28,7 @@ Vagrant.configure("2") do |config|
   # Port forwarding for common services
   config.vm.network "forwarded_port", guest: 22, host: 2222, id: "ssh", auto_correct: true
   config.vm.network "forwarded_port", guest: 80, host: 8080, auto_correct: true
-  config.vm.network "forwarded_port", guest: 443, host: 8443, auto_correct: true
+  config.vm.network "forwarded_port", guest: 443, host: 8445, auto_correct: true
   
   # Sync folders
   config.vm.synced_folder ".", "/vagrant", type: "rsync",
@@ -48,7 +48,7 @@ Vagrant.configure("2") do |config|
   config.vm.provision "ansible" do |ansible|
     ansible.compatibility_mode = "2.0"
     ansible.playbook = "ansible/playbook.yml"
-    ansible.inventory_path = "ansible/inventory"
+    ansible.inventory_path = "ansible/inventories/anton-dev.ini"
     ansible.limit = "anton-dev"
     ansible.verbose = "v"
     ansible.extra_vars = {
