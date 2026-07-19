@@ -83,7 +83,6 @@
 - name: Manage users
   user:
     name: "{{ item.name }}"
-    group: "{{ item.name }}"
     groups: "{{ item.groups | default([]) }}"
     password: "{{ (user_passwords | default({}))[item.name] | default(omit) }}"
     append: yes
