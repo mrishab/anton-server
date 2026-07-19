@@ -15,26 +15,35 @@ ufw_default_outgoing: "allow"
 ufw_rules:
   - { rule: "allow", port: "22", comment: "SSH" }
   - { rule: "allow", port: "9100", comment: "Node Exporter" }
+  - {
+      rule: "allow",
+      port: "1514",
+      proto: "tcp",
+      comment: "Wazuh agent-manager communication",
+    }
+  - {
+      rule: "allow",
+      port: "1515",
+      proto: "tcp",
+      comment: "Wazuh agent enrollment",
+    }
+  - {
+      rule: "allow",
+      port: "8445",
+      proto: "tcp",
+      comment: "Wazuh Dashboard Web UI",
+    }
 
-# Fail2Ban Configuration
-fail2ban_bantime: "10m"
-fail2ban_findtime: "10m"
-fail2ban_maxretry: 6
-
-# Fail2Ban Jails
-fail2ban_jails:
-  - name: "ssh"
-    enabled: true
-    port: "ssh"
-    filter: "sshd"
-    logpath: "/var/log/auth.log"
+# Wazuh Configuration
+wazuh_manager_host: "127.0.0.1"
+wazuh_manager_deploy: true
+wazuh_dashboard_port: 8445
+wazuh_dashboard_bind: "0.0.0.0"
 
 # Additional Security Packages
 security_packages:
-  - fail2ban
   - ufw
   - unattended-upgrades
 
 # Unattended upgrades email notifications
 security_admin_email: "rishab.manocha@outlook.com"
-

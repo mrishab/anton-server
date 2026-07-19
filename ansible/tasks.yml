@@ -1,13 +1,29 @@
 # Core tasks for Anton Server
-- name: Add Docker's official GPG key
-  apt_key:
+- name: Ensure keyrings directory exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Docker's official GPG key
+  get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+
+- name: Remove all Docker apt source entries (including unsigned/conflicting ones)
+  shell: |
+    # Remove any .list files that reference the Docker download URL
+    grep -rl 'download.docker.com' /etc/apt/sources.list.d/ 2>/dev/null | xargs -r rm -f
+    # Strip any inline Docker lines from /etc/apt/sources.list
+    sed -i '/download\.docker\.com/d' /etc/apt/sources.list
+  changed_when: false
 
 - name: Add Docker repository
   apt_repository:
-    repo: "deb [arch={{ docker_repo_arch | default('amd64') }}] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    repo: "deb [arch={{ docker_repo_arch | default('amd64') }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
     state: present
+    filename: docker
 
 - name: Install packages
   apt:
@@ -173,21 +189,167 @@
   ufw:
     rule: "{{ item.rule }}"
     port: "{{ item.port }}"
+    proto: "{{ item.proto | default('any') }}"
   loop: "{{ ufw_rules }}"
 
 - name: Enable UFW Firewall
   ufw:
     state: enabled
 
-- name: Configure Fail2Ban
-  template:
-    src: templates/fail2ban-jail.local.j2
-    dest: /etc/fail2ban/jail.local
-  notify: restart fail2ban
+- name: Purge legacy security packages
+  apt:
+    name:
+      - fail2ban
+      - auditd
+      - aide
+    state: absent
+    purge: yes
 
-- name: Manage Fail2Ban service
+- name: Download Wazuh GPG key
+  get_url:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    dest: /usr/share/keyrings/wazuh.asc
+    mode: "0644"
+
+- name: Add Wazuh repository
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/wazuh.asc] https://packages.wazuh.com/4.x/apt/ stable main"
+    state: present
+    filename: wazuh
+
+- name: Install Wazuh agent
+  apt:
+    name: wazuh-agent
+    state: present
+    update_cache: yes
+  environment:
+    WAZUH_MANAGER: "{{ wazuh_manager_host }}"
+
+- name: Ensure Wazuh agent is started and enabled
   service:
-    name: fail2ban
+    name: wazuh-agent
+    state: started
+    enabled: yes
+
+- name: Deploy Wazuh Manager Native Stack
+  block:
+    - name: Install Wazuh Indexer, Manager, and Dashboard
+      apt:
+        name:
+          - wazuh-indexer
+          - wazuh-manager
+          - wazuh-dashboard
+        state: present
+        update_cache: yes
+
+    - name: Ensure Wazuh Indexer certs directory exists
+      file:
+        path: /etc/wazuh-indexer/certs
+        state: directory
+        owner: wazuh-indexer
+        group: wazuh-indexer
+        mode: "0750"
+
+    - name: Generate Wazuh Indexer TLS certificates if missing
+      shell: |
+        openssl req -x509 -new -nodes -newkey rsa:2048 -keyout /etc/wazuh-indexer/certs/root-ca.key -out /etc/wazuh-indexer/certs/root-ca.pem -days 3650 -subj "/C=US/L=California/O=Wazuh/OU=Wazuh/CN=root-ca"
+        openssl req -new -nodes -newkey rsa:2048 -keyout /etc/wazuh-indexer/certs/indexer-key.pem -out /etc/wazuh-indexer/certs/indexer.csr -subj "/C=US/L=California/O=Wazuh/OU=Wazuh/CN=node-1"
+        openssl x509 -req -in /etc/wazuh-indexer/certs/indexer.csr -CA /etc/wazuh-indexer/certs/root-ca.pem -CAkey /etc/wazuh-indexer/certs/root-ca.key -CAcreateserial -out /etc/wazuh-indexer/certs/indexer.pem -days 3650
+        openssl req -new -nodes -newkey rsa:2048 -keyout /etc/wazuh-indexer/certs/admin-key.pem -out /etc/wazuh-indexer/certs/admin.csr -subj "/C=US/L=California/O=Wazuh/OU=Wazuh/CN=admin"
+        openssl x509 -req -in /etc/wazuh-indexer/certs/admin.csr -CA /etc/wazuh-indexer/certs/root-ca.pem -CAkey /etc/wazuh-indexer/certs/root-ca.key -CAcreateserial -out /etc/wazuh-indexer/certs/admin.pem -days 3650
+        chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs
+        chmod 750 /etc/wazuh-indexer/certs
+        chmod 640 /etc/wazuh-indexer/certs/*
+      args:
+        creates: /etc/wazuh-indexer/certs/root-ca.pem
+
+    - name: Ensure Wazuh Dashboard certs directory exists
+      file:
+        path: /etc/wazuh-dashboard/certs
+        state: directory
+        owner: wazuh-dashboard
+        group: wazuh-dashboard
+        mode: "0750"
+
+    - name: Copy TLS certificates for Wazuh Dashboard
+      shell: |
+        cp /etc/wazuh-indexer/certs/indexer.pem /etc/wazuh-dashboard/certs/wazuh-dashboard.pem
+        cp /etc/wazuh-indexer/certs/indexer-key.pem /etc/wazuh-dashboard/certs/wazuh-dashboard-key.pem
+        cp /etc/wazuh-indexer/certs/root-ca.pem /etc/wazuh-dashboard/certs/root-ca.pem
+        chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
+        chmod 750 /etc/wazuh-dashboard/certs
+        chmod 640 /etc/wazuh-dashboard/certs/*
+      args:
+        creates: /etc/wazuh-dashboard/certs/wazuh-dashboard.pem
+
+    - name: Configure Wazuh Dashboard to bind to custom port, host, and SSL settings
+      lineinfile:
+        path: /etc/wazuh-dashboard/opensearch_dashboards.yml
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        create: yes
+      loop:
+        - {
+            regexp: "^server\\.port:",
+            line: "server.port: {{ wazuh_dashboard_port | default(8445) }}",
+          }
+        - {
+            regexp: "^server\\.host:",
+            line: 'server.host: "{{ wazuh_dashboard_bind | default(''0.0.0.0'') }}"',
+          }
+        - {
+            regexp: "^#?opensearch\\.ssl\\.verificationMode:",
+            line: "opensearch.ssl.verificationMode: none",
+          }
+        - {
+            regexp: "^#?server\\.ssl\\.enabled:",
+            line: "server.ssl.enabled: true",
+          }
+        - {
+            regexp: "^#?server\\.ssl\\.key:",
+            line: 'server.ssl.key: "/etc/wazuh-dashboard/certs/wazuh-dashboard-key.pem"',
+          }
+        - {
+            regexp: "^#?server\\.ssl\\.certificate:",
+            line: 'server.ssl.certificate: "/etc/wazuh-dashboard/certs/wazuh-dashboard.pem"',
+          }
+      notify: restart wazuh-dashboard
+
+    - name: Force systemd to reread configs
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start wazuh-indexer before security init
+      service:
+        name: wazuh-indexer
+        state: started
+        enabled: yes
+
+    - name: Initialize Wazuh Indexer security plugin (run once)
+      command: /usr/share/wazuh-indexer/bin/indexer-security-init.sh
+      args:
+        creates: /etc/wazuh-indexer/.security_initialized
+      register: wazuh_security_init
+
+    - name: Mark security initialization as complete
+      file:
+        path: /etc/wazuh-indexer/.security_initialized
+        state: touch
+      when: wazuh_security_init.changed
+
+    - name: Ensure Wazuh Manager and Dashboard services are started and enabled
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - wazuh-manager
+        - wazuh-dashboard
+  when: wazuh_manager_deploy | default(false)
+
+- name: Ensure AppArmor is started and enabled
+  service:
+    name: apparmor
     state: started
     enabled: yes
 
@@ -232,66 +394,62 @@
     group: root
     mode: "0644"
 
+- name: Install sysstat package
+  apt:
+    name: sysstat
+    state: present
+
 - name: Ensure sysstat collector is enabled
   lineinfile:
     path: /etc/default/sysstat
-    regexp: '^ENABLED='
+    regexp: "^ENABLED="
     line: 'ENABLED="true"'
+    create: yes
   notify: restart sysstat
 
 - name: Ensure sysstat is started and enabled
-  systemd:
+  service:
     name: sysstat
     state: started
     enabled: yes
 
+- name: Install rkhunter package
+  apt:
+    name: rkhunter
+    state: present
+
 - name: Configure daily rkhunter scan
   lineinfile:
     path: /etc/default/rkhunter
-    regexp: '^CRON_DAILY_RUN='
+    regexp: "^CRON_DAILY_RUN="
     line: 'CRON_DAILY_RUN="true"'
+    create: yes
 
 - name: Configure weekly rkhunter database updates
   lineinfile:
     path: /etc/default/rkhunter
-    regexp: '^CRON_DB_UPDATE='
+    regexp: "^CRON_DB_UPDATE="
     line: 'CRON_DB_UPDATE="true"'
+    create: yes
 
 - name: Configure rkhunter alert email
   lineinfile:
     path: /etc/rkhunter.conf
-    regexp: '^#?MAIL-ON-WARNING='
+    regexp: "^#?MAIL-ON-WARNING="
     line: 'MAIL-ON-WARNING="{{ security_admin_email }}"'
+    create: yes
 
-- name: Ensure auditd is started and enabled
-  service:
-    name: auditd
-    state: started
-    enabled: yes
-
-- name: Check if AIDE database exists
-  stat:
-    path: /var/lib/aide/aide.db.gz
-  register: aide_db
-
-- name: Initialize AIDE database if missing
-  command: aideinit -y -f
-  when: not aide_db.stat.exists
-
-- name: Deploy initialized AIDE database
-  copy:
-    src: /var/lib/aide/aide.db.new.gz
-    dest: /var/lib/aide/aide.db.gz
-    remote_src: yes
-  when: not aide_db.stat.exists
-
-- name: Configure weekly Lynis security audit cron job
+- name: Configure daily Lynis security audit cron job
   cron:
-    name: "Weekly Lynis Security Audit"
-    special_time: weekly
-    job: "/usr/sbin/lynis audit system --quick --quiet"
+    name: "Daily Lynis Security Audit"
+    special_time: daily
+    job: "/usr/sbin/lynis audit system --cronjob 2>&1 | logger -t lynis-audit"
 
-
+- name: Configure monthly Lynis security audit cron job
+  cron:
+    name: "Monthly Lynis Security Audit"
+    special_time: monthly
+    job: "/usr/sbin/lynis audit system --cronjob 2>&1 | logger -t lynis-monthly"
 
 - name: Setup Node Exporter
   block:
@@ -330,7 +488,6 @@
         mode: "0755"
         remote_src: yes
       when: not node_exporter_bin.stat.exists
-
 
     - name: Create systemd service
       copy:

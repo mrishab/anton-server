@@ -6,7 +6,6 @@ system_packages:
   - logrotate
   - sysvinit-utils
 
-
   # Utilities & Shell
   - acl
   - at
@@ -46,13 +45,13 @@ system_packages:
 
   # Security
   - ufw
-  - fail2ban
   - rkhunter
   - policycoreutils
   - unattended-upgrades
-  - auditd
-  - aide
   - lynis
+  - apparmor
+  - apparmor-utils
+  - apparmor-profiles
 
   # Storage & Filesystems
   - mdadm
