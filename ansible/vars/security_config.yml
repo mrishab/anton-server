@@ -16,9 +16,22 @@ ufw_rules:
   - { rule: "allow", port: "22", comment: "SSH" }
   - { rule: "allow", port: "9100", comment: "Node Exporter" }
 
+# Fail2Ban Configuration
+fail2ban_bantime: "10m"
+fail2ban_findtime: "10m"
+fail2ban_maxretry: 6
+
+# Fail2Ban Jails
+fail2ban_jails:
+  - name: "ssh"
+    enabled: true
+    port: "ssh"
+    filter: "sshd"
+    logpath: "/var/log/auth.log"
 
 # Additional Security Packages
 security_packages:
+  - fail2ban
   - ufw
   - unattended-upgrades
 

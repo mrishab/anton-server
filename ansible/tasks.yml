@@ -194,21 +194,65 @@
   ufw:
     state: enabled
 
-- name: Purge legacy security packages
+- name: Install Fail2Ban package
   apt:
-    name:
-      - fail2ban
-      - auditd
-      - aide
-    state: absent
-    purge: yes
+    name: fail2ban
+    state: present
 
+- name: Configure Fail2Ban
+  template:
+    src: templates/fail2ban-jail.local.j2
+    dest: /etc/fail2ban/jail.local
+  notify: restart fail2ban
 
-- name: Ensure AppArmor is started and enabled
+- name: Manage Fail2Ban service
   service:
-    name: apparmor
+    name: fail2ban
     state: started
     enabled: yes
+
+- name: Install auditd package
+  apt:
+    name: auditd
+    state: present
+
+- name: Ensure auditd is started and enabled
+  service:
+    name: auditd
+    state: started
+    enabled: yes
+
+- name: Install AIDE package
+  apt:
+    name: aide
+    state: present
+
+- name: Check if AIDE database exists
+  stat:
+    path: /var/lib/aide/aide.db
+  register: aide_db
+
+- name: Initialize AIDE database if missing
+  command: aideinit -y -f
+  when: not aide_db.stat.exists
+
+- name: Deploy initialized AIDE database
+  copy:
+    src: /var/lib/aide/aide.db.new
+    dest: /var/lib/aide/aide.db
+    remote_src: yes
+  when: not aide_db.stat.exists
+
+- name: Install Lynis package
+  apt:
+    name: lynis
+    state: present
+
+- name: Configure weekly Lynis security audit cron job
+  cron:
+    name: "Weekly Lynis Security Audit"
+    special_time: weekly
+    job: "/usr/sbin/lynis audit system --quick --quiet"
 
 - name: Enable Ubuntu Pro (Expanded Security Maintenance)
   command: pro attach {{ ubuntu_pro_token }}
@@ -369,3 +413,4 @@
         name: node_exporter
         state: started
         enabled: yes
+      when: not ansible_check_mode

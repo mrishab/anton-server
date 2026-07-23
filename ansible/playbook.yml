@@ -17,6 +17,8 @@
   handlers:
     - name: restart ssh
       service: { name: sshd, state: restarted }
+    - name: restart fail2ban
+      service: { name: fail2ban, state: restarted }
     - name: reload systemd
       systemd:
         daemon_reload: yes
