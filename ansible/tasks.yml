@@ -40,6 +40,64 @@
     force: yes
   ignore_errors: yes
 
+- name: Configure Docker daemon settings and log rotation
+  block:
+    - name: Ensure Docker config directory exists
+      file:
+        path: /etc/docker
+        state: directory
+        mode: "0755"
+
+    - name: Check if Docker daemon configuration exists
+      stat:
+        path: /etc/docker/daemon.json
+      register: docker_daemon_json_stat
+
+    - name: Configure Docker daemon log rotation (new file)
+      copy:
+        dest: /etc/docker/daemon.json
+        mode: "0644"
+        content: |
+          {
+            "log-driver": "{{ docker_log_driver | default('json-file') }}",
+            "log-opts": {
+              "max-size": "{{ docker_log_max_size | default('50m') }}",
+              "max-file": "{{ docker_log_max_file | default('3') }}"
+            }
+          }
+      when: not docker_daemon_json_stat.stat.exists
+      notify:
+        - restart docker
+
+    - name: Update Docker daemon log rotation in existing configuration
+      shell: |
+        python3 -c "
+        import json
+        path = '/etc/docker/daemon.json'
+        with open(path, 'r') as f:
+            data = json.load(f)
+        changed = False
+        if data.get('log-driver') != '{{ docker_log_driver | default('json-file') }}':
+            data['log-driver'] = '{{ docker_log_driver | default('json-file') }}'
+            changed = True
+        log_opts = data.setdefault('log-opts', {})
+        if log_opts.get('max-size') != '{{ docker_log_max_size | default('50m') }}':
+            log_opts['max-size'] = '{{ docker_log_max_size | default('50m') }}'
+            changed = True
+        if log_opts.get('max-file') != '{{ docker_log_max_file | default('3') }}':
+            log_opts['max-file'] = '{{ docker_log_max_file | default('3') }}'
+            changed = True
+        if changed:
+            with open(path, 'w') as f:
+                json.dump(data, f, indent=2)
+            print('CHANGED')
+        "
+      register: daemon_update_result
+      changed_when: "'CHANGED' in daemon_update_result.stdout"
+      when: docker_daemon_json_stat.stat.exists
+      notify:
+        - restart docker
+
 - name: Configure Docker daemon to listen on TCP 172.17.0.1:2375
   block:
     - name: Create Docker systemd override directory
@@ -351,6 +409,37 @@
     name: "Monthly Lynis Security Audit"
     special_time: monthly
     job: "/usr/sbin/lynis audit system --cronjob 2>&1 | logger -t lynis-monthly"
+
+- name: Check if Postfix configuration exists
+  stat:
+    path: /etc/postfix/main.cf
+  register: postfix_main_cf
+
+- name: Configure Postfix safeguards to prevent outbound port 25 hangs
+  block:
+    - name: Restrict Postfix to loopback interface
+      lineinfile:
+        path: /etc/postfix/main.cf
+        regexp: "^#?inet_interfaces"
+        line: "inet_interfaces = loopback-only"
+      notify: reload postfix
+
+    - name: Disable direct external outbound delivery on unauthenticated port 25
+      lineinfile:
+        path: /etc/postfix/main.cf
+        regexp: "^#?default_transport"
+        line: "default_transport = error: direct outbound delivery disabled"
+      notify: reload postfix
+  when: postfix_main_cf.stat.exists
+
+- name: Remove Postfix network hook scripts to prevent interface startup hangs
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/network/if-up.d/postfix
+    - /etc/ppp/ip-up.d/postfix
+    - /etc/dhcp/dhclient-exit-hooks.d/postfix
 
 - name: Setup Node Exporter
   block:

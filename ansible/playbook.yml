@@ -30,3 +30,7 @@
       service:
         name: sysstat
         state: restarted
+    - name: reload postfix
+      service:
+        name: postfix
+        state: reloaded
