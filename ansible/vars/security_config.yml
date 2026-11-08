@@ -36,4 +36,4 @@ security_packages:
   - unattended-upgrades
 
 # Unattended upgrades email notifications
-security_admin_email: "rishab.manocha@outlook.com"
+security_admin_email: "<your-admin-email>"

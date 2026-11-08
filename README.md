@@ -13,7 +13,7 @@ Anton Server is an infrastructure-as-code repository for provisioning and managi
 - **Monitoring:** Node Exporter installed and configured as a systemd service.
 - **Container Ready:** Automatically installs Docker and Docker Compose plugin.
 - **Storage Management:** Support for RAID 5 arrays (`mdadm`) and custom fstab mounts for external HDDs.
-- **System Configuration:** Sets up required users (e.g., `mrishab`, `jaas`, `sarthak`) with appropriate groups (`sudo`, `docker`), SSH keys, and system-level sysctl limits.
+- **System Configuration:** Sets up required users (e.g., `your-username`) with appropriate groups (`sudo`, `docker`), SSH keys, and system-level sysctl limits.
 
 ## Prerequisites
 
