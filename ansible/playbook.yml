@@ -36,3 +36,4 @@
         state: reloaded
     - name: update rkhunter properties
       command: rkhunter --propupd
+      changed_when: true

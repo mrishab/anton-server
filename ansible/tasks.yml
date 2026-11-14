@@ -420,6 +420,8 @@
 
 - name: Initialize rkhunter file properties database
   command: rkhunter --propupd
+  args:
+    creates: /var/lib/rkhunter/db/rkhunter.dat
   when: not rkhunter_db.stat.exists
 
 - name: Configure daily Lynis security audit cron job
