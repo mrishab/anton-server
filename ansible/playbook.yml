@@ -34,3 +34,5 @@
       service:
         name: postfix
         state: reloaded
+    - name: update rkhunter properties
+      command: rkhunter --propupd
