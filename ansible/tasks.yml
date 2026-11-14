@@ -376,6 +376,7 @@
   apt:
     name: rkhunter
     state: present
+  notify: update rkhunter properties
 
 - name: Configure daily rkhunter scan
   lineinfile:
@@ -391,12 +392,37 @@
     line: 'CRON_DB_UPDATE="true"'
     create: yes
 
+- name: Configure automatic rkhunter baseline updates on package operations
+  lineinfile:
+    path: /etc/default/rkhunter
+    regexp: "^APT_AUTOGEN="
+    line: 'APT_AUTOGEN="true"'
+    create: yes
+
 - name: Configure rkhunter alert email
   lineinfile:
     path: /etc/rkhunter.conf
     regexp: "^#?MAIL-ON-WARNING="
     line: 'MAIL-ON-WARNING="{{ security_admin_email }}"'
     create: yes
+
+- name: Check if rkhunter database exists
+  stat:
+    path: /var/lib/rkhunter/db/rkhunter.dat
+  register: rkhunter_db
+
+- name: Update rkhunter data files
+  command: rkhunter --update
+  register: rkhunter_update
+  failed_when: false
+  changed_when: rkhunter_update.rc == 0
+  when: not rkhunter_db.stat.exists
+
+- name: Initialize rkhunter file properties database
+  command: rkhunter --propupd
+  args:
+    creates: /var/lib/rkhunter/db/rkhunter.dat
+  when: not rkhunter_db.stat.exists
 
 - name: Configure daily Lynis security audit cron job
   cron:
